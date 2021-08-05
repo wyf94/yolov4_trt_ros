@@ -1,0 +1,15 @@
+<launch>
+	<!-- yolov4_trt_node -->
+	
+	<!-- <param name="topic_name" type="string" value="/usb_cam/image_raw" /> -->
+	<node pkg="yolov4_trt_ros" type="trt_yolo_v4.py" name="yolov4_trt" output="screen">
+		<param name="topic_name" type="string" value="/image_source_0" />
+		<param name="model" type="string" value="yolov4" />	
+		<param name="model_path" type="string" value="$(find yolov4_trt_ros)/yolo/" />
+		<param name="input_shape" type="string" value="608" />
+		<param name="category_number" type="int" value="7" />
+		<param name="confidence_threshold" type="double" value="0.4" />
+		<param name="show_image" type="bool" value="True" />
+                
+	</node>
+</launch>
