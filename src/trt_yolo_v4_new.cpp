@@ -37,10 +37,6 @@ typedef image_transport::SubscriberFilter ImageSubscriber;
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> syncPolicy;
 typedef message_filters::Synchronizer<syncPolicy> Sync;
 
-typedef std::function<void (const sensor_msgs::ImageConstPtr& msg)> CallBackFunction;
-
-
-
 class Yolov4
 {
 private:
@@ -71,15 +67,11 @@ private:
     util::TrtYOLO trt_yolo;
     util::BBoxVisualization vis;
 
-    int64 diff=0;
-    int64 last_time=0;
-
     ImageSubscriber* image_sub_0, * image_sub_1;
     Sync* sync;
     ros::Publisher detection_publisher_0, detection_publisher_1, detection_publisher_nms;
-    image_transport::ImageTransport it;
+    image_transport::ImageTransport it_;
     image_transport::Publisher image_nms_publisher;
-    image_transport::Subscriber image_sub;
     sensor_msgs::ImagePtr msg;
     std::vector<util::Box> box_result_0, box_result_1, box_result_merge, box_result_nms;
     cv::Mat drawImage_0, drawImage_1, drawImage_merge, drawImage_nms;
@@ -129,18 +121,17 @@ private:
         }
         if (result_img_pub)
         {
-            image_nms_publisher = it.advertise("/output_image_nms", 1);
+            image_nms_publisher = it_.advertise("/output_image_nms", 1);
         }
 
-        // image_sub_0 = new ImageSubscriber(it, video_topic_0, 1, hints);
-        // image_sub_1 = new ImageSubscriber(it, video_topic_1, 1, hints);
-        // image_sub_0 = new ImageSubscriber(it, video_topic_0, 1);
-        // image_sub_1 = new ImageSubscriber(it, video_topic_1, 1);
+        // image_sub_0 = new ImageSubscriber(it_, video_topic_0, 1, hints);
+        // image_sub_1 = new ImageSubscriber(it_, video_topic_1, 1, hints);
+        // image_sub_0 = new ImageSubscriber(it_, video_topic_0, 1);
+        // image_sub_1 = new ImageSubscriber(it_, video_topic_1, 1);
         // sync = new Sync(syncPolicy(20), *image_sub_0, *image_sub_1);
         // sync->registerCallback(boost::bind(&Yolov4::imageSyncCallback, this, _1, _2));
-        const boost::function<void(const sensor_msgs::ImageConstPtr&)> f(boost::bind(&Yolov4::imageCallback,this,_1));
-        image_sub= it.subscribe(video_topic_1,1,f,ros::VoidPtr(),hints);
-        // image_sub= it.subscribe(video_topic_1,1,f);
+        // const boost::function<void(const sensor_msgs::ImageConstPtr&)> fun(boost::bind(&Yolov4::imageCallback,this,_1));
+        // image_transport::Subscriber image_sub= it_.subscribe("/image_source_0",1,fun);
     }
 
 public:
@@ -148,7 +139,7 @@ public:
     void bboxes_publisher(std::vector<util::Box> boxes, ros::Publisher det_pub, ros::Time pub_time);
     void imageSyncCallback(const sensor_msgs::ImageConstPtr& msg_0, const sensor_msgs::ImageConstPtr& msg_1);
     void translatePoint(std::vector<util::Box>& box_result, float factor, int x, int y);
-    Yolov4(const ros::NodeHandle& node_handle) : n_(node_handle), it(node_handle)
+    Yolov4(const ros::NodeHandle& node_handle) : n_(node_handle), it_(node_handle)
     {
         init_params();
         init_yolo();
@@ -240,11 +231,11 @@ void Yolov4::imageCallback(const sensor_msgs::ImageConstPtr& msg_0)
     struct timeval tv;
     gettimeofday(&tv, NULL);
     int64 start_time = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-    std::cout<<"diff time: "<<start_time - last_time<<std::endl;
-    // std::cout<<"last time: "<<last_time<<std::endl;
-    last_time = start_time;
+    std::cout<<"start time: "<<start_time<<std::endl;
 
     ros::Time begin = ros::Time::now();
+
+    std::cout<<"received image successful."<<std::endl;
 
     cv_bridge::CvImagePtr cv_ptr_0;
     cv::Mat img_0;
@@ -259,30 +250,13 @@ void Yolov4::imageCallback(const sensor_msgs::ImageConstPtr& msg_0)
         ROS_ERROR("could not convert from '%s' to 'bgr8'.", msg_0->encoding.c_str());
     }
 
-    // yolo detect and publish the boxes of image 0/1 
-    if (cv_ptr_0 != nullptr)
-    {
-        //preprocess,detection,postprocess
-        trt_yolo.detect(img_0, box_result_0, conf_th);
-    }
-    if (boxes_0_pub)
-    {
-        // publish the bounding boxes of image topic 1
-        bboxes_publisher(box_result_0, detection_publisher_0, begin);
-    }
-
     struct timeval tz;
     gettimeofday(&tz, NULL);
     int64 end_time = tz.tv_sec * 1000 + tz.tv_usec / 1000;
     // std::cout<<"start_time: "<<start_time<<"  end_time: "<<end_time<<std::endl;
-
     cv::Point p_start = cv::Point(10, 100);
     std::string str_start = "Befor detection: " + std::to_string(start_time);
     cv::putText(img_0, str_start, p_start, cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0, 0, 255), 2);
-    cv::Point p_end = cv::Point(10, 150);
-    std::string str_end = "After detection: " + std::to_string(end_time);
-    // std::cout<<"start_time: "<<str_start<<"  end_time: "<<str_end<<std::endl;
-    cv::putText(img_0, str_end, p_end, cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0, 0, 255), 2);
 
     if (result_img_pub)
     {
@@ -291,20 +265,6 @@ void Yolov4::imageCallback(const sensor_msgs::ImageConstPtr& msg_0)
         img_header.frame_id = "image";
         msg = cv_bridge::CvImage(img_header, "bgr8", img_0).toImageMsg();
         image_nms_publisher.publish(msg);
-    }
-
-    if (show_img)
-    {
-        drawImage_0 = img_0.clone();
-        //Draw boxes in  image
-        for (int i = 0; i < box_result_0.size(); i++)
-        {
-            vis.draw_bboxes(drawImage_0, box_result_0[i]);
-        }
-        cv::resize(drawImage_0, drawImage_0, cv::Size(), 0.6, 0.6, CV_INTER_CUBIC);
-        cv::namedWindow("YOLOv4 DETECTION RESULTS", cv::WINDOW_NORMAL);
-        cv::imshow("YOLOv4 DETECTION RESULTS", drawImage_0);
-        cv::waitKey(1);
     }
 }
 
@@ -315,9 +275,7 @@ void Yolov4::imageSyncCallback(const sensor_msgs::ImageConstPtr& msg_0, const se
     struct timeval tv;
     gettimeofday(&tv, NULL);
     int64 start_time = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-    std::cout<<"diff time: "<<start_time - last_time<<std::endl;
-    // std::cout<<"last time: "<<last_time<<std::endl;
-    last_time = start_time;
+    std::cout<<"start time: "<<start_time<<std::endl;
 
     ros::Time begin = ros::Time::now();
 
@@ -347,6 +305,10 @@ void Yolov4::imageSyncCallback(const sensor_msgs::ImageConstPtr& msg_0, const se
         ROS_ERROR("could not convert from '%s' to 'bgr8'.", msg_1->encoding.c_str());
     }
 
+    struct timeval tz;
+    gettimeofday(&tz, NULL);
+    int64 end_time = tz.tv_sec * 1000 + tz.tv_usec / 1000;
+
     // yolo detect and publish the boxes of image 0/1 
     if (cv_ptr_0 != nullptr)
     {
@@ -368,10 +330,6 @@ void Yolov4::imageSyncCallback(const sensor_msgs::ImageConstPtr& msg_0, const se
         // publish the bounding boxes of image topic 1
         bboxes_publisher(box_result_1, detection_publisher_1, begin);
     }
-
-    struct timeval tz;
-    gettimeofday(&tz, NULL);
-    int64 end_time = tz.tv_sec * 1000 + tz.tv_usec / 1000;
 
     if (show_img)
     {
