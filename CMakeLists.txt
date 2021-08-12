@@ -6,6 +6,7 @@ find_package(jetson-utils REQUIRED)
 find_package(jetson-inference REQUIRED)
 find_package(CUDA REQUIRED)
 
+
 find_package(Boost REQUIRED COMPONENTS python)
 
 catkin_python_setup()
