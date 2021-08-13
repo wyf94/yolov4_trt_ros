@@ -413,7 +413,7 @@ private:
     static void reportTestResult(const TestAtom& testAtom, TestResult result)
     {
         severityOstream(Severity::kINFO) << "&&&& " << testResultString(result) << " " << testAtom.mName << " # "
-                                         << testAtom.mCmdline << std::endl;
+            << testAtom.mCmdline << std::endl;
     }
 
     //!
@@ -437,66 +437,66 @@ private:
 namespace
 {
 
-//!
-//! \brief produces a LogStreamConsumer object that can be used to log messages of severity kVERBOSE
-//!
-//! Example usage:
-//!
-//!     LOG_VERBOSE(logger) << "hello world" << std::endl;
-//!
-inline LogStreamConsumer LOG_VERBOSE(const Logger& logger)
-{
-    return LogStreamConsumer(logger.getReportableSeverity(), Severity::kVERBOSE);
-}
+    //!
+    //! \brief produces a LogStreamConsumer object that can be used to log messages of severity kVERBOSE
+    //!
+    //! Example usage:
+    //!
+    //!     LOG_VERBOSE(logger) << "hello world" << std::endl;
+    //!
+    inline LogStreamConsumer LOG_VERBOSE(const Logger& logger)
+    {
+        return LogStreamConsumer(logger.getReportableSeverity(), Severity::kVERBOSE);
+    }
 
-//!
-//! \brief produces a LogStreamConsumer object that can be used to log messages of severity kINFO
-//!
-//! Example usage:
-//!
-//!     LOG_INFO(logger) << "hello world" << std::endl;
-//!
-inline LogStreamConsumer LOG_INFO(const Logger& logger)
-{
-    return LogStreamConsumer(logger.getReportableSeverity(), Severity::kINFO);
-}
+    //!
+    //! \brief produces a LogStreamConsumer object that can be used to log messages of severity kINFO
+    //!
+    //! Example usage:
+    //!
+    //!     LOG_INFO(logger) << "hello world" << std::endl;
+    //!
+    inline LogStreamConsumer LOG_INFO(const Logger& logger)
+    {
+        return LogStreamConsumer(logger.getReportableSeverity(), Severity::kINFO);
+    }
 
-//!
-//! \brief produces a LogStreamConsumer object that can be used to log messages of severity kWARNING
-//!
-//! Example usage:
-//!
-//!     LOG_WARN(logger) << "hello world" << std::endl;
-//!
-inline LogStreamConsumer LOG_WARN(const Logger& logger)
-{
-    return LogStreamConsumer(logger.getReportableSeverity(), Severity::kWARNING);
-}
+    //!
+    //! \brief produces a LogStreamConsumer object that can be used to log messages of severity kWARNING
+    //!
+    //! Example usage:
+    //!
+    //!     LOG_WARN(logger) << "hello world" << std::endl;
+    //!
+    inline LogStreamConsumer LOG_WARN(const Logger& logger)
+    {
+        return LogStreamConsumer(logger.getReportableSeverity(), Severity::kWARNING);
+    }
 
-//!
-//! \brief produces a LogStreamConsumer object that can be used to log messages of severity kERROR
-//!
-//! Example usage:
-//!
-//!     LOG_ERROR(logger) << "hello world" << std::endl;
-//!
-inline LogStreamConsumer LOG_ERROR(const Logger& logger)
-{
-    return LogStreamConsumer(logger.getReportableSeverity(), Severity::kERROR);
-}
+    //!
+    //! \brief produces a LogStreamConsumer object that can be used to log messages of severity kERROR
+    //!
+    //! Example usage:
+    //!
+    //!     LOG_ERROR(logger) << "hello world" << std::endl;
+    //!
+    inline LogStreamConsumer LOG_ERROR(const Logger& logger)
+    {
+        return LogStreamConsumer(logger.getReportableSeverity(), Severity::kERROR);
+    }
 
-//!
-//! \brief produces a LogStreamConsumer object that can be used to log messages of severity kINTERNAL_ERROR
-//         ("fatal" severity)
-//!
-//! Example usage:
-//!
-//!     LOG_FATAL(logger) << "hello world" << std::endl;
-//!
-inline LogStreamConsumer LOG_FATAL(const Logger& logger)
-{
-    return LogStreamConsumer(logger.getReportableSeverity(), Severity::kINTERNAL_ERROR);
-}
+    //!
+    //! \brief produces a LogStreamConsumer object that can be used to log messages of severity kINTERNAL_ERROR
+    //         ("fatal" severity)
+    //!
+    //! Example usage:
+    //!
+    //!     LOG_FATAL(logger) << "hello world" << std::endl;
+    //!
+    inline LogStreamConsumer LOG_FATAL(const Logger& logger)
+    {
+        return LogStreamConsumer(logger.getReportableSeverity(), Severity::kINTERNAL_ERROR);
+    }
 
 } // anonymous namespace
 
