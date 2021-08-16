@@ -1,12 +1,13 @@
 #ifndef VISUALIZATION_H
 #define VISUALIZATION_H
+
 #include <opencv2/opencv.hpp>
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
 #include <math.h>
 #include <random>
-#include<algorithm>
-
+#include <algorithm>
 
 namespace util
 {
@@ -54,9 +55,6 @@ namespace util
         }
         return color_vec_int;
     }
-
-
-
 
     class BBoxVisualization
     {
@@ -109,7 +107,6 @@ namespace util
             draw_boxed_text(img, txt, std::max(box_result.start_x + 2, zero), std::max(box_result.start_y + 2, zero), bgrColor);
         }
     };
-
 }
 
 #endif

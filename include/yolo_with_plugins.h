@@ -1,15 +1,23 @@
 #ifndef YOLO_WITH_PLUGINS_H
 #define YOLO_WITH_PLUGINS_H
+
+#include <map>
+#include <fstream>
+
 #include <opencv2/opencv.hpp>
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/imgproc/types_c.h>
+
 #include "NvInfer.h"
 #include "NvInferPlugin.h"
-#include "yolo_layer.h"
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <numeric>
+
+#include "yolo_layer.h"
 #include "common.h"
+
 #ifndef CUDA_CHECK
 
 #define CUDA_CHECK(callstr)                                                                    \

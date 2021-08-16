@@ -1,27 +1,133 @@
-#include "trt_yolo_v4.h"
+#include "yolov4_trt.h"
 
-void Yolov4::imageCallback(const sensor_msgs::ImageConstPtr& msg_0)
+Yolov4::Yolov4(rclcpp::NodeOptions const& options) : rclcpp::Node{ "yolov4_trt_node", options }
+{
+    RCLCPP_INFO(this->get_logger(), "[%s]: Initializing...", this->get_name());
+
+    init_params();
+
+    init_yolo();
+
+    trt_yolo.trt_init(model_path + model, h, w, category_num);
+
+    //Image topic 0 and 1
+    if (boxes_0_pub)
+    {
+        detection_publisher_0 = this->create_publisher<yolov4_trt::msg::BoundingBoxes>("bounding_boxes_0", 1);
+    }
+    if (boxes_1_pub)
+    {
+        detection_publisher_1 = this->create_publisher<yolov4_trt::msg::BoundingBoxes>("bounding_boxes_1", 1);
+    }
+    if (boxes_nms_pub)
+    {
+        detection_publisher_nms = this->create_publisher<yolov4_trt::msg::BoundingBoxes>("bounding_boxes_nms", 1);
+    }
+    if (result_img_pub)
+    {
+        image_nms_publisher = image_transport::create_publisher(this, "output_image_nms", custom_qos);
+    }
+
+    image_sub_0 = image_transport::create_subscription(this, video_topic_0, std::bind(&Yolov4::imageCallback, this, std::placeholders::_1), "raw", custom_qos);
+    image_sub_1 = image_transport::create_subscription(this, video_topic_1, std::bind(&Yolov4::imageCallback, this, std::placeholders::_1), "raw", custom_qos);
+
+    // // image_sub_0 = new ImageSubscriber(it, video_topic_0, 1, hints);
+    // // image_sub_1 = new ImageSubscriber(it, video_topic_1, 1, hints);
+    // // image_sub_0 = new ImageSubscriber(it, video_topic_0, 1);
+    // // image_sub_1 = new ImageSubscriber(it, video_topic_1, 1);
+    // // sync = new Sync(syncPolicy(20), *image_sub_0, *image_sub_1);
+    // // sync->registerCallback(boost::bind(&Yolov4::imageSyncCallback, this, _1, _2));
+    // const boost::function<void(const sensor_msgs::ImageConstPtr&)> f(boost::bind(&Yolov4::imageCallback, this, _1));
+    // image_sub = it.subscribe(video_topic_1, 1, f, ros::VoidPtr(), hints);
+    // // image_sub= it.subscribe(video_topic_1,1,f);
+}
+
+void Yolov4::init_params()
+{
+    // std::string package_path = ros::package::getPath("yolov4_trt_ros");
+    // image_transport::TransportHints hints("compressed");
+
+    getParameter("topic_name_0", video_topic_0);
+    getParameter("topic_name_1", video_topic_1);
+    getParameter("model", model);
+    getParameter("model_path", model_path);
+    getParameter("input_shape", input_shape);
+    getParameter("category_number", category_num);
+    getParameter("confidence_threshold", conf_th);
+    getParameter("show_image", show_img);
+    getParameter("nms_iou_threshold", iou_th);
+    getParameter("match_yaml_path", yaml_path);
+    getParameter("bounding_boxes_0_publisher", boxes_0_pub);
+    getParameter("bounding_boxes_1_publisher", boxes_1_pub);
+    getParameter("bounding_boxes_nms_publisher", boxes_nms_pub);
+    getParameter("dectec_result_img_publisher", result_img_pub);
+
+    match_conf = YAML::LoadFile(yaml_path);
+    match_factor = match_conf["factor"].as<float>();
+    match_x = match_conf["x"].as<int>();
+    match_y = match_conf["y"].as<int>();
+    std::cout << "match_factor:" << match_factor << std::endl;
+    std::cout << "match_x:" << match_x << std::endl;
+    std::cout << "match_y:" << match_y << std::endl;
+
+    custom_qos = rmw_qos_profile_default;
+}
+
+void Yolov4::init_yolo()
+{
+    std::string yolo_dim;
+    std::string dim_split;
+    if (model.find('-') == std::string::npos)
+    {
+        model = model + "-" + input_shape;
+        yolo_dim = model.substr((model.find_last_of('-') + 1));
+    }
+    if (yolo_dim.find('x') != std::string::npos)
+    {
+        if (yolo_dim.find_last_of('x') != yolo_dim.find_first_of('x'))
+        {
+            std::cout << "ERROR: bad yolo_dim " << yolo_dim << std::endl;
+            exit(1);
+        }
+        else
+        {
+            int pos = yolo_dim.find('x');
+            w = stoi(yolo_dim.substr(0, pos));
+            h = stoi(yolo_dim.substr(pos));
+        }
+    }
+    else
+    {
+        w = stoi(yolo_dim);
+        h = w;
+    }
+
+    if ((h % 32 != 0) || (w % 32 != 0))
+    {
+        std::cout << "ERROR: bad yolo_dim " << yolo_dim << std::endl;
+        exit(1);
+    }
+}
+
+void Yolov4::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr& msg_0)
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     int64 start_time = tv.tv_sec * 1000 + tv.tv_usec / 1000;
     std::cout << "diff time: " << start_time - last_time << std::endl;
-    // std::cout<<"last time: "<<last_time<<std::endl;
     last_time = start_time;
 
-    ros::Time begin = ros::Time::now();
+    rclcpp::Time begin;
 
-    cv_bridge::CvImagePtr cv_ptr_0;
+    cv_bridge::CvImageConstPtr cv_ptr_0;
     cv::Mat img_0;
-    //convert msg to mat image
     try
     {
-        cv_ptr_0 = cv_bridge::toCvCopy(msg_0, sensor_msgs::image_encodings::BGR8);
-        cv_ptr_0->image.copyTo(img_0);
+        img_0 = cv_bridge::toCvShare(msg_0, "bgr8")->image;
     }
-    catch (cv_bridge::Exception& e_0)
+    catch (cv_bridge::Exception& e)
     {
-        ROS_ERROR("could not convert from '%s' to 'bgr8'.", msg_0->encoding.c_str());
+        RCLCPP_ERROR(this->get_logger(), "Unable to get '%s' image for send: '%s'", msg_0->encoding.c_str(), e.what());
     }
 
     // yolo detect and publish the boxes of image 0/1 
@@ -51,7 +157,7 @@ void Yolov4::imageCallback(const sensor_msgs::ImageConstPtr& msg_0)
 
     if (result_img_pub)
     {
-        std_msgs::Header img_header;
+        std_msgs::msg::Header img_header;
         img_header.stamp = begin;
         img_header.frame_id = "image";
         msg = cv_bridge::CvImage(img_header, "bgr8", img_0).toImageMsg();
@@ -73,7 +179,7 @@ void Yolov4::imageCallback(const sensor_msgs::ImageConstPtr& msg_0)
     }
 }
 
-void Yolov4::imageSyncCallback(const sensor_msgs::ImageConstPtr& msg_0, const sensor_msgs::ImageConstPtr& msg_1)
+void Yolov4::imageSyncCallback(const sensor_msgs::msg::Image::ConstSharedPtr& msg_0, const sensor_msgs::msg::Image::ConstSharedPtr& msg_1)
 {
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -84,32 +190,27 @@ void Yolov4::imageSyncCallback(const sensor_msgs::ImageConstPtr& msg_0, const se
     // std::cout<<"last time: "<<last_time<<std::endl;
     last_time = start_time;
 
-    ros::Time begin = ros::Time::now();
+    rclcpp::Time begin;
 
     // format: ros-msg 2 format: cv-Mat
-    cv_bridge::CvImagePtr cv_ptr_0;
-    cv::Mat img_0;
+    cv_bridge::CvImageConstPtr cv_ptr_0, cv_ptr_1;
+    cv::Mat img_0, img_1;
     //convert msg to mat image
     try
     {
-        cv_ptr_0 = cv_bridge::toCvCopy(msg_0, sensor_msgs::image_encodings::BGR8);
-        cv_ptr_0->image.copyTo(img_0);
+        img_0 = cv_bridge::toCvShare(msg_0, "bgr8")->image;
     }
-    catch (cv_bridge::Exception& e_0)
+    catch (cv_bridge::Exception& e)
     {
-        ROS_ERROR("could not convert from '%s' to 'bgr8'.", msg_0->encoding.c_str());
+        RCLCPP_ERROR(this->get_logger(), "Unable to get '%s' image for send: '%s'", msg_0->encoding.c_str(), e.what());
     }
-    cv_bridge::CvImagePtr cv_ptr_1;
-    cv::Mat img_1;
-    //convert msg to mat image
     try
     {
-        cv_ptr_1 = cv_bridge::toCvCopy(msg_1, sensor_msgs::image_encodings::BGR8);
-        cv_ptr_1->image.copyTo(img_1);
+        img_1 = cv_bridge::toCvShare(msg_1, "bgr8")->image;
     }
-    catch (cv_bridge::Exception& e_1)
+    catch (cv_bridge::Exception& e)
     {
-        ROS_ERROR("could not convert from '%s' to 'bgr8'.", msg_1->encoding.c_str());
+        RCLCPP_ERROR(this->get_logger(), "Unable to get '%s' image for send: '%s'", msg_1->encoding.c_str(), e.what());
     }
 
     // yolo detect and publish the boxes of image 0/1 
@@ -204,7 +305,7 @@ void Yolov4::imageSyncCallback(const sensor_msgs::ImageConstPtr& msg_0, const se
 
     if (result_img_pub)
     {
-        std_msgs::Header img_header;
+        std_msgs::msg::Header img_header;
         img_header.stamp = begin;
         img_header.frame_id = "image";
         msg = cv_bridge::CvImage(img_header, "bgr8", img_0).toImageMsg();
@@ -260,14 +361,14 @@ void Yolov4::translatePoint(std::vector<util::Box>& box_result, float factor, in
 }
 
 //publish box detection result
-void Yolov4::bboxes_publisher(std::vector<util::Box> boxes, ros::Publisher det_pub, ros::Time pub_time)
+void Yolov4::bboxes_publisher(std::vector<util::Box> boxes, std::shared_ptr<rclcpp::Publisher<yolov4_trt::msg::BoundingBoxes>> det_pub, rclcpp::Time pub_time)
 {
-    yolov4_trt_ros::BoundingBoxes boxes_msg;
+    yolov4_trt::msg::BoundingBoxes boxes_msg;
     boxes_msg.header.stamp = pub_time;
     boxes_msg.header.frame_id = "detection";
     for (int i = 0; i < boxes.size(); i++)
     {
-        yolov4_trt_ros::BoundingBox bounding_box_msg;
+        yolov4_trt::msg::BoundingBox bounding_box_msg;
         util::Box temp_box = boxes[i];
         bounding_box_msg.probability = temp_box.score;
         bounding_box_msg.xmin = (int)temp_box.start_x;
@@ -276,8 +377,34 @@ void Yolov4::bboxes_publisher(std::vector<util::Box> boxes, ros::Publisher det_p
         bounding_box_msg.ymax = (int)temp_box.end_y;
 
         bounding_box_msg.id = i;
-        bounding_box_msg.Class = util::classes_list[(int)temp_box.box_class];
+        bounding_box_msg.classes = util::classes_list[(int)temp_box.box_class];
         boxes_msg.bounding_boxes.push_back(bounding_box_msg);
     }
-    det_pub.publish(boxes_msg);
+    det_pub->publish(boxes_msg);
 }
+
+template <class T>
+bool Yolov4::getParameter(std::string parameterName, T& parameterDestination)
+{
+    const std::string param_path = "" + parameterName;
+    this->declare_parameter(param_path);
+
+    if (!this->get_parameter(param_path, parameterDestination))
+    {
+        RCLCPP_ERROR(this->get_logger(), "[%s]: Could not load param '%s'", this->get_name(), parameterName.c_str());
+        return false;
+    }
+    else
+    {
+        RCLCPP_INFO_STREAM(this->get_logger(), "[" << this->get_name() << "]: Loaded '" << parameterName << "' = '" << parameterDestination << "'");
+    }
+
+    return true;
+}
+
+template bool Yolov4::getParameter<int>(std::string parameterName, int& parameterDestination);
+template bool Yolov4::getParameter<double>(std::string parameterName, double& parameterDestination);
+template bool Yolov4::getParameter<float>(std::string parameterName, float& parameterDestination);
+template bool Yolov4::getParameter<std::string>(std::string parameterName, std::string& parameterDestination);
+template bool Yolov4::getParameter<bool>(std::string parameterName, bool& parameterDestination);
+template bool Yolov4::getParameter<unsigned int>(std::string parameterName, unsigned int& parameterDestination);

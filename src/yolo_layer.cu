@@ -17,35 +17,35 @@ using namespace Yolo;
 
 namespace
 {
-// Write values into buffer
-template <typename T>
-void write(char*& buffer, const T& val)
-{
-    *reinterpret_cast<T*>(buffer) = val;
-    buffer += sizeof(T);
-}
+    // Write values into buffer
+    template <typename T>
+    void write(char*& buffer, const T& val)
+    {
+        *reinterpret_cast<T*>(buffer) = val;
+        buffer += sizeof(T);
+    }
 
-// Read values from buffer
-template <typename T>
-void read(const char*& buffer, T& val)
-{
-    val = *reinterpret_cast<const T*>(buffer);
-    buffer += sizeof(T);
-}
+    // Read values from buffer
+    template <typename T>
+    void read(const char*& buffer, T& val)
+    {
+        val = *reinterpret_cast<const T*>(buffer);
+        buffer += sizeof(T);
+    }
 } // namespace
 
 namespace nvinfer1
 {
     YoloLayerPlugin::YoloLayerPlugin(int yolo_width, int yolo_height, int num_anchors, float* anchors, int num_classes, int input_width, int input_height, float scale_x_y)
     {
-        mYoloWidth   = yolo_width;
-        mYoloHeight  = yolo_height;
-        mNumAnchors  = num_anchors;
+        mYoloWidth = yolo_width;
+        mYoloHeight = yolo_height;
+        mNumAnchors = num_anchors;
         memcpy(mAnchorsHost, anchors, num_anchors * 2 * sizeof(float));
-        mNumClasses  = num_classes;
-        mInputWidth  = input_width;
+        mNumClasses = num_classes;
+        mInputWidth = input_width;
         mInputHeight = input_height;
-        mScaleXY     = scale_x_y;
+        mScaleXY = scale_x_y;
 
         CHECK(cudaMalloc(&mAnchors, MAX_ANCHORS * 2 * sizeof(float)));
         CHECK(cudaMemcpy(mAnchors, mAnchorsHost, mNumAnchors * 2 * sizeof(float), cudaMemcpyHostToDevice));
@@ -53,7 +53,7 @@ namespace nvinfer1
 
     YoloLayerPlugin::YoloLayerPlugin(const void* data, size_t length)
     {
-        const char *d = reinterpret_cast<const char *>(data), *a = d;
+        const char* d = reinterpret_cast<const char*>(data), * a = d;
         read(d, mThreadCount);
         read(d, mYoloWidth);
         read(d, mYoloHeight);
@@ -73,7 +73,7 @@ namespace nvinfer1
 
     void YoloLayerPlugin::serialize(void* buffer) const
     {
-        char* d = static_cast<char*>(buffer), *a = d;
+        char* d = static_cast<char*>(buffer), * a = d;
         write(d, mThreadCount);
         write(d, mYoloWidth);
         write(d, mYoloHeight);
@@ -91,11 +91,11 @@ namespace nvinfer1
     size_t YoloLayerPlugin::getSerializationSize() const
     {
         return sizeof(mThreadCount) + \
-               sizeof(mYoloWidth) + sizeof(mYoloHeight) + \
-               sizeof(mNumAnchors) + MAX_ANCHORS * 2 * sizeof(float) + \
-               sizeof(mNumClasses) + \
-               sizeof(mInputWidth) + sizeof(mInputHeight) + \
-               sizeof(mScaleXY);
+            sizeof(mYoloWidth) + sizeof(mYoloHeight) + \
+            sizeof(mNumAnchors) + MAX_ANCHORS * 2 * sizeof(float) + \
+            sizeof(mNumClasses) + \
+            sizeof(mInputWidth) + sizeof(mInputHeight) + \
+            sizeof(mScaleXY);
     }
 
     int YoloLayerPlugin::initialize()
@@ -174,7 +174,7 @@ namespace nvinfer1
     // Clone the plugin
     IPluginV2IOExt* YoloLayerPlugin::clone() const
     {
-        YoloLayerPlugin *p = new YoloLayerPlugin(mYoloWidth, mYoloHeight, mNumAnchors, (float*) mAnchorsHost, mNumClasses, mInputWidth, mInputHeight, mScaleXY);
+        YoloLayerPlugin* p = new YoloLayerPlugin(mYoloWidth, mYoloHeight, mNumAnchors, (float*)mAnchorsHost, mNumClasses, mInputWidth, mInputHeight, mScaleXY);
         p->setPluginNamespace(mPluginNamespace);
         return p;
     }
@@ -191,11 +191,11 @@ namespace nvinfer1
     // for each grid/anchor combination.
     // NOTE: The output (x, y, w, h) are between 0.0 and 1.0
     //       (relative to orginal image width and height).
-    __global__ void CalDetection(const float *input, float *output, int yolo_width, int yolo_height, int num_anchors,
-                                 const float *anchors, int num_classes, int input_w, int input_h, float scale_x_y)
+    __global__ void CalDetection(const float* input, float* output, int yolo_width, int yolo_height, int num_anchors,
+        const float* anchors, int num_classes, int input_w, int input_h, float scale_x_y)
     {
         int idx = threadIdx.x + blockDim.x * blockIdx.x;
-        Detection* det = ((Detection*) output) + idx;
+        Detection* det = ((Detection*)output) + idx;
         int total_grids = yolo_width * yolo_height;
         if (idx >= total_grids * num_anchors) return;
 
@@ -240,8 +240,8 @@ namespace nvinfer1
 
         //CHECK(cudaMemset(output, 0, num_elements * sizeof(Detection)));
 
-        CalDetection<<<(num_elements + mThreadCount - 1) / mThreadCount, mThreadCount>>>
-            (inputs[0], output, mYoloWidth, mYoloHeight, mNumAnchors, (const float*) mAnchors, mNumClasses, mInputWidth, mInputHeight, mScaleXY);
+        CalDetection << <(num_elements + mThreadCount - 1) / mThreadCount, mThreadCount >> >
+            (inputs[0], output, mYoloWidth, mYoloHeight, mNumAnchors, (const float*)mAnchors, mNumClasses, mInputWidth, mInputHeight, mScaleXY);
     }
 
     int YoloLayerPlugin::enqueue(int batchSize, const void* const* inputs, void** outputs, void* workspace, cudaStream_t stream)
@@ -316,7 +316,7 @@ namespace nvinfer1
                 assert(fields[i].type == PluginFieldType::kINT32);
                 input_height = *(static_cast<const int*>(fields[i].data));
             }
-            else if (!strcmp(attrName, "anchors")){
+            else if (!strcmp(attrName, "anchors")) {
                 assert(num_anchors > 0 && num_anchors <= MAX_ANCHORS);
                 assert(fields[i].type == PluginFieldType::kFLOAT32);
                 memcpy(anchors, static_cast<const float*>(fields[i].data), num_anchors * 2 * sizeof(float));

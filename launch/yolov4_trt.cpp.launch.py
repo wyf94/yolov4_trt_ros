@@ -8,14 +8,14 @@ from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument
 
 def generate_launch_description():
-    param_dir = os.path.join(get_package_share_directory('demo_view'), 'config', 'params.yaml')
+    param_dir = os.path.join(get_package_share_directory('yolov4_trt'), 'config', 'params.cpp.yaml')
     print(param_dir)
 
     return LaunchDescription([
         Node(
-            package='demo_view',
-            executable='demo_view_node',
-            name='demo_view_node',
+            package='yolov4_trt',
+            executable='yolov4_trt_node',
+            name='yolov4_trt_node',
             prefix=['stdbuf -o L'],
             output='screen',
             parameters=[

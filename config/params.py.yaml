@@ -1,0 +1,16 @@
+yolov4_trt_node:
+  ros__parameters:
+    topic_name_0: "/image_source_1"
+    topic_name_1 : "/image_source_1"
+    model: "yolov4"
+    model_path: "/root/ros2_ws/install/yolov4_trt/share/yolov4_trt/weights/"
+    input_shape: "416"
+    category_number : 7 #80
+    confidence_threshold : 0.5
+    show_image : false
+    nms_iou_threshold : 0.5
+    match_yaml_path : "/home/nvidia/ros_ws/src/Image-Matching/config/match_info.yaml"
+    bounding_boxes_0_publisher : true
+    bounding_boxes_1_publisher : true
+    bounding_boxes_nms_publisher : true
+    dectec_result_img_publisher : true

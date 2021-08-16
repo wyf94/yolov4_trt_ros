@@ -1,6 +1,7 @@
 #include "yolo_with_plugins.h"
+
 #include "logging.h"
-#include <map>
+
 namespace util
 {
     static Logger gLogger;
