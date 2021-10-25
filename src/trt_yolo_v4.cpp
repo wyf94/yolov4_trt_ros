@@ -139,7 +139,7 @@ private:
         // sync = new Sync(syncPolicy(20), *image_sub_0, *image_sub_1);
         // sync->registerCallback(boost::bind(&Yolov4::imageSyncCallback, this, _1, _2));
         const boost::function<void(const sensor_msgs::ImageConstPtr&)> f(boost::bind(&Yolov4::imageCallback,this,_1));
-        image_sub= it.subscribe(video_topic_1,1,f,ros::VoidPtr(),hints);
+        image_sub= it.subscribe(video_topic_0,1,f,ros::VoidPtr(),hints);
         // image_sub= it.subscribe(video_topic_1,1,f);
     }
 
