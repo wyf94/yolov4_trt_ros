@@ -8,7 +8,7 @@
         <param name="input_shape" type="string" value="416"/>
         <param name="category_number" type="int" value="7"/>
         <param name="confidence_threshold" type="double" value="0.4" />
-        <param name="show_image" type="bool" value="false" />
+        <param name="show_image" type="bool" value="true" />
         <param name="nms_iou_threshold" type="double" value="0.5" />
         <param name="match_yaml_path" value="/home/nvidia/ros_ws/src/Image-Matching/config/match_info.yaml"/>
         <param name="bounding_boxes_0_publisher" type="bool" value="true" />

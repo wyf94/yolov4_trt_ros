@@ -9,7 +9,7 @@
 #include "ros/ros.h"
 #include "ros/package.h"
 #include "cv_bridge/cv_bridge.h"
-#include "yaml-cpp/yaml.h"
+// #include "yaml-cpp/yaml.h"
 
 #include "boost/function.hpp"
 #include "boost/bind.hpp"
@@ -84,7 +84,7 @@ private:
     std::vector<util::Box> box_result_0, box_result_1, box_result_merge, box_result_nms;
     cv::Mat drawImage_0, drawImage_1, drawImage_merge, drawImage_nms;
 
-    YAML::Node match_conf;
+    // YAML::Node match_conf;
 
     void init_params()
     {
@@ -106,13 +106,13 @@ private:
         n_.param<bool>("/yolov4_trt/bounding_boxes_nms_publisher", boxes_nms_pub, true);
         n_.param<bool>("/yolov4_trt/dectec_result_img_publisher", result_img_pub, true);
 
-        match_conf = YAML::LoadFile(yaml_path);
-        match_factor = match_conf["factor"].as<float>();
-        match_x = match_conf["x"].as<int>();
-        match_y = match_conf["y"].as<int>();
-        std::cout << "match_factor:" << match_factor << std::endl;
-        std::cout << "match_x:" << match_x << std::endl;
-        std::cout << "match_y:" << match_y << std::endl;
+        // match_conf = YAML::LoadFile(yaml_path);
+        // match_factor = match_conf["factor"].as<float>();
+        // match_x = match_conf["x"].as<int>();
+        // match_y = match_conf["y"].as<int>();
+        // std::cout << "match_factor:" << match_factor << std::endl;
+        // std::cout << "match_x:" << match_x << std::endl;
+        // std::cout << "match_y:" << match_y << std::endl;
 
         //Image topic 0 and 1
         if (boxes_0_pub)
